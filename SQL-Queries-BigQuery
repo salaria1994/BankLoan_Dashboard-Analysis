@@ -1,0 +1,252 @@
+SQL Queries used for analysis of Loan data. -- using BIGQUERY
+
+
+#ALTER TABLE Bankloanpro.loanAnalysis
+ADD PRIMARY KEY (id) NOT ENFORCED;
+
+
+select * from `Bankloanpro.loanAnalysis`;
+
+# Find total number of loan applications
+
+Select count(id) as  Total_loan_applications
+from `Bankloanpro.loanAnalysis`;
+
+# Total month to date loan applications
+
+select count(id) as number_of_loans
+from `Bankloanpro.loanAnalysis`
+where EXTRACT(MONTH FROM issue_date)=12;
+
+# Total PREVIOUS month to date loan applications
+
+select count(id) as number_of_loans
+from `Bankloanpro.loanAnalysis`
+where EXTRACT(MONTH FROM issue_date)=11;
+
+
+# Total funded amount
+select sum(loan_amount) as totat_amount
+from `Bankloanpro.loanAnalysis`;
+
+
+# MTD Funded amount
+select sum(loan_amount) as mtd_amount
+from `Bankloanpro.loanAnalysis` 
+where extract(month from issue_date)=12;
+
+# PreviOUS MTD Funded amount
+select sum(loan_amount) as pmtd_amount
+from `Bankloanpro.loanAnalysis` 
+where extract(month from issue_date)=11;
+
+# Total amount received
+
+select sum(total_payment) as amount_received
+from `Bankloanpro.loanAnalysis`;
+
+# Total MTD amount received 
+select sum(total_payment) as MTDamount_received
+from `Bankloanpro.loanAnalysis`
+where extract(month from issue_date)=12;
+
+
+# Total PMTD amount received 
+select sum(total_payment) as PMTDamount_received
+from `Bankloanpro.loanAnalysis`
+where extract(month from issue_date)=11;
+
+# Average interest rate
+select avg(int_rate)*100 as average_interest_rate
+from `Bankloanpro.loanAnalysis`;
+
+
+# MTD Average interest rate
+select avg(int_rate)*100 as MTDaverage_interest_rate
+from `Bankloanpro.loanAnalysis`
+where extract(month from issue_date)=12;
+
+# PMTD Average interest rate
+select avg(int_rate)*100 as PMTDaverage_interest_rate
+from `Bankloanpro.loanAnalysis`
+where extract(month from issue_date)=11;
+
+# Average DTI
+select avg(dti)*100 as DTI
+from `Bankloanpro.loanAnalysis`;
+
+# Average DTI
+select avg(dti)*100 as MDTI
+from `Bankloanpro.loanAnalysis`
+where extract(month from issue_date)=12;
+
+# Average DTI
+select avg(dti)*100 as PMDTI
+from `Bankloanpro.loanAnalysis`
+where extract(month from issue_date)=11;
+
+
+# Good loan percentage
+with cte_A as(
+select 
+Count(id) as goodloannumber
+from `Bankloanpro.loanAnalysis`
+where loan_status IN ("Fully Paid","Current")
+)
+select (cte_A.goodloannumber *100  / (
+  select count(id) as total
+  from `Bankloanpro.loanAnalysis`
+) )as good_loan_rate
+from cte_A;
+
+#OR
+
+SELECT
+    (COUNT(CASE WHEN loan_status IN ('Fully Paid', 'Current') THEN id ELSE NULL END) * 100.0 / COUNT(id)) AS good_loan_rate
+FROM
+    Bankloanpro.loanAnalysis;
+
+# Good Loan Applications
+
+select 
+Count(id) as goodloannumber
+from `Bankloanpro.loanAnalysis`
+where loan_status IN ("Fully Paid","Current");
+
+# Good Loan Funded Amount
+
+Select SUM(loan_amount) AS Good_Loan_Funded_amount
+from `Bankloanpro.loanAnalysis`
+where loan_status IN ("Fully Paid","Current");
+
+# Calculate Good loan amount received
+
+select SUM(total_payment) AS Good_Loan_amount_received
+from `Bankloanpro.loanAnalysis`
+where loan_status IN ("Fully Paid","Current");
+
+# Bad loan percentage
+with cte_A as(
+select 
+Count(id) as badloannumber
+from `Bankloanpro.loanAnalysis`
+where loan_status IN ("Charged Off")
+)
+select (cte_A.badloannumber *100  / (
+  select count(id) as total
+  from `Bankloanpro.loanAnalysis`
+) )as bad_loan_rate
+from cte_A;
+
+#OR
+
+SELECT
+    (COUNT(CASE WHEN loan_status IN ('Charged Off') THEN id ELSE NULL END) * 100.0 / COUNT(id)) AS bad_loan_rate
+FROM
+    Bankloanpro.loanAnalysis;
+
+# Bad Loan Applications
+
+select 
+Count(id) as badloannumber
+from `Bankloanpro.loanAnalysis`
+where loan_status IN ("Charged Off");
+
+# Bad Loan Funded Amount
+
+Select SUM(loan_amount) AS Bad_Loan_Funded_amount
+from `Bankloanpro.loanAnalysis`
+where loan_status IN ("Charged Off");
+
+# Calculate Bad loan amount received
+
+select SUM(total_payment) AS bad_Loan_amount_received
+from `Bankloanpro.loanAnalysis`
+where loan_status IN ("Charged Off");
+
+#LOAN STATUS
+
+select
+loan_status,
+COUNT(id) AS LoanCount,
+SUM(total_payment) AS Total_Amount_Received,
+SUM(loan_amount) AS Total_Funded_Amount,
+AVG(int_rate * 100) AS Interest_Rate,
+AVG(dti * 100) AS DTI
+from
+`Bankloanpro.loanAnalysis`
+GROUP BY
+loan_status;
+
+
+select
+loan_status, 
+SUM(total_payment) AS MTD_TotalAmount_Received, 
+SUM(loan_amount) AS MTD_TotalFunded_Amount 
+FROM `Bankloanpro.loanAnalysis`
+WHERE extract(month from issue_date) = 12 
+GROUP BY loan_status;
+
+# BANK LOAN REPORT MONTH-WISE
+select
+extract(MONTH from issue_date) AS Month_nunber, 
+FORMAT_DATE('%B', issue_date) AS month_name_full,
+	COUNT(id) AS Total_Loan_Applications,
+	SUM(loan_amount) AS Total_Funded_Amount,
+	SUM(total_payment) AS Total_Amount_Received
+FROM `Bankloanpro.loanAnalysis`
+GROUP BY extract(MONTH from issue_date), month_name_full
+ORDER BY extract(MONTH from issue_date);
+
+# BANK LOAN REPORT STATE-WISE
+select
+address_state AS State, 
+COUNT(id) AS Total_Loan_Applications,
+SUM(loan_amount) AS Total_Funded_Amount,
+SUM(total_payment) AS Total_Amount_Received
+FROM `Bankloanpro.loanAnalysis`
+GROUP BY address_state
+ORDER BY address_state;
+
+
+#HOME OWNERSHIP
+select
+home_ownership AS Home_Ownership, 
+COUNT(id) AS Total_Loan_Applications,
+SUM(loan_amount) AS Total_Funded_Amount,
+SUM(total_payment) AS Total_Amount_Received
+FROM `Bankloanpro.loanAnalysis`
+GROUP BY home_ownership
+ORDER BY home_ownership;
+
+#PURPOSE
+
+select
+purpose AS PURPOSE, 
+COUNT(id) AS Total_Loan_Applications,
+SUM(loan_amount) AS Total_Funded_Amount,
+SUM(total_payment) AS Total_Amount_Received
+from `Bankloanpro.loanAnalysis`
+GROUP BY purpose
+ORDER BY purpose;
+
+
+
+#TERM
+select
+term AS Term, 
+COUNT(id) AS Total_Loan_Applications,
+SUM(loan_amount) AS Total_Funded_Amount,
+SUM(total_payment) AS Total_Amount_Received
+FROM `Bankloanpro.loanAnalysis`
+GROUP BY term
+ORDER BY term
+
+
+
+
+
+
+
+
+
